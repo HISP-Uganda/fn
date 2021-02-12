@@ -1,20 +1,20 @@
 import { D2Shim } from "@dhis2/app-runtime-adapter-d2";
 import React from "react";
-import { QueryCache, ReactQueryCacheProvider } from "react-query";
+import { QueryClient, QueryClientProvider } from "react-query";
 import App from "./components/App";
 import { D2Context } from "./Context";
 
-const queryCache = new QueryCache();
+const queryClient = new QueryClient();
 
 const d2Config = {};
 
-const authorization =
-  process.env.NODE_ENV === "development"
-    ? process.env.REACT_APP_DHIS2_AUTHORIZATION
-    : null;
-if (authorization) {
-  d2Config.headers = { Authorization: authorization };
-}
+// const authorization =
+//   process.env.NODE_ENV === "development"
+//     ? process.env.REACT_APP_DHIS2_AUTHORIZATION
+//     : null;
+// if (authorization) {
+//   d2Config.headers = { Authorization: authorization };
+// }
 
 const AppWrapper = () => {
   return (
@@ -24,11 +24,11 @@ const AppWrapper = () => {
           return null;
         }
         return (
-          <ReactQueryCacheProvider queryCache={queryCache}>
+          <QueryClientProvider client={queryClient}>
             <D2Context.Provider value={d2}>
               <App />
             </D2Context.Provider>
-          </ReactQueryCacheProvider>
+          </QueryClientProvider>
         );
       }}
     </D2Shim>

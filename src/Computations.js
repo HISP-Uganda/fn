@@ -1,212 +1,287 @@
-// async function fetchApi(url, credentials = null) {
-//   const response = await fetch(url, {});
-//   return await response.json();
-// }
-import _ from "lodash";
+export const func = `
+function groupBy( array , f ){
+  var groups = {};
+  array.forEach( function( o ){
+    var group = JSON.stringify( f(o) );
+    groups[group] = groups[group] || [];
+    groups[group].push( o );
+  });
+  return Object.keys(groups).map( function( group ){
+    return groups[group];
+  });
+}
+
+Array.prototype.unique = function() {
+  return this.filter(function (value, index, self) {
+    return self.indexOf(value) === index;
+  });
+}
 
 async function fetchAnalyticsStructure(periods, orgs, fetchApi) {
   return await fetchApi(
-    `analytics.json?dimension=pe:${periods}&dimension=ou:${orgs}&skipData=true&hierarchyMeta=true`
+    "analytics.json?dimension=pe:" +
+      periods +
+      "&dimension=ou:" +
+      orgs +
+      "&skipData=true&hierarchyMeta=true"
   );
 }
 
-async function fetchOrganisationsByGroups(allGroups, fetchApi) {
-  return await fetchApi(
-    `organisationUnitGroups.json?filter=id:in:[${allGroups}]&fields=id,organisationUnits[id]&paging=false`
-  );
+async function fetchMax() {
+  const response = await fetchApi("organisationUnitLevels.json?order=level:desc&pageSize=1&fields=level");
+  return response.organisationUnitLevels[0].level;
 }
 
-async function fetchOrganisationsByLevels(allGroups, fetchApi) {
-  return await fetchApi(
-    `organisationUnits.json?filter=level:in:[${allGroups}]&fields=id,level&paging=false`
-  );
+async function fetchOrganisations(orgs, allGroups, periods, fetchApi) {
+  const requests = allGroups.map(function (gp) {
+    return fetchAnalyticsStructure(periods, gp + ";" + orgs, fetchApi);
+  });
+  const results = await Promise.all(requests);
+  const processed = results.map(function (data, index) {
+    return [
+      allGroups[index],
+      data.metaData.dimensions["ou"].map(function (ou) {
+        return data.metaData.ouHierarchy[ou] + "/" + ou;
+      }),
+    ];
+  });
+  return Object.fromEntries(processed);
 }
 
 async function fetchAnalyticsData(allDataElements, periods, ous, fetchApi) {
   return await fetchApi(
-    `analytics.json?dimension=pe:${periods}&dimension=ou:${ous}&dimension=dx:${allDataElements}&hierarchyMeta=true`
+    "analytics.json?dimension=pe:" +
+      periods +
+      "&dimension=ou:" +
+      ous +
+      "&dimension=dx:" +
+      allDataElements +
+      "&hierarchyMeta=true"
   );
 }
 
-export async function call(periods, orgs, rule, fetchApi) {
+async function call(periods, orgs, rule, fetchApi, addParams = false) {
   try {
+    const maxLevel = await fetchMax();
+
     let num = rule.numerator;
     let den = rule.denominator;
+    const countUnits = rule.countUnits;
     const indicatorId = rule.id;
     const dummy = await fetchAnalyticsStructure(periods, orgs, fetchApi);
-
     const dimensions = dummy.metaData.dimensions;
 
-    const numeratorDataElements = num.match(/#{\w+.?\w*}/g);
-    const denominatorDataElements = den.match(/#{\w+.?\w*}/g);
+    const numeratorDataElements = num.match(/#{\\w+.?\\w*}/g);
+    const denominatorDataElements = den.match(/#{\\w+.?\\w*}/g);
 
-    const numeratorGroups = num.match(/OU_GROUP{\w+.?\w*}/g);
-    const denominatorGroups = den.match(/OU_GROUP{\w+.?\w*}/g);
+    const numeratorGroups = num.match(/OU_GROUP{\\w+.?\\w*}/g);
+    const denominatorGroups = den.match(/OU_GROUP{\\w+.?\\w*}/g);
 
-    const numeratorLevels = num.match(/OU_LEVEL{\w+.?\w*}/g);
-    const denominatorLevels = den.match(/OU_LEVEL{\w+.?\w*}/g);
+    const numeratorLevels = num.match(/OU_LEVEL{\\w+.?\\w*}/g);
+    const denominatorLevels = den.match(/OU_LEVEL{\\w+.?\\w*}/g);
 
     let allDataElements = [];
-    let allGroups = [];
-    let allLevels = [];
+    let numeratorUnits = [];
+    let denominatorUnits = [];
 
     if (numeratorDataElements) {
       const des = numeratorDataElements.map((de) => {
         const replacement = de.replace("#{", "").replace("}", "");
-        const we = replacement.replace(".", "");
-        num = num.replace(de, `obj['${we}']`);
+        num = num.replace(de, "obj['" + replacement + "']");
         return replacement;
       });
-      allDataElements = _.concat(allDataElements, des);
+      allDataElements = allDataElements.concat(des);
     }
 
     if (denominatorDataElements) {
       const des = denominatorDataElements.map(function (de) {
         const replacement = de.replace("#{", "").replace("}", "");
-        const we = replacement.replace(".", "");
-        den = den.replace(de, `obj['${we}']`);
+        den = den.replace(de, "obj['" + replacement + "']");
         return replacement;
       });
-      allDataElements = _.concat(allDataElements, des);
+      allDataElements = allDataElements.concat(des);
     }
 
     if (numeratorGroups) {
       const gps = numeratorGroups.map(function (oug) {
-        const replacement = oug.replace("OU_GROUP{", "").replace("}", "");
+        const replacement = oug
+          .replace("OU_GROUP{", "OU_GROUP-")
+          .replace("}", "");
         num = num.replace(
           oug,
-          `!!filterGroups.${replacement}.find(function(x){return obj.ou.indexOf(x) !== -1})`
+          "ous['"+replacement+"'].find(function(x){return obj.ou.indexOf(x) !== -1})"
         );
         return replacement;
       });
-      allGroups = _.concat(allGroups, gps);
+      numeratorUnits = numeratorUnits.concat(gps);
     }
 
     if (denominatorGroups) {
       const gps = denominatorGroups.map((oug) => {
-        const replacement = oug.replace("OU_GROUP{", "").replace("}", "");
+        const replacement = oug
+          .replace("OU_GROUP{", "OU_GROUP-")
+          .replace("}", "");
         den = den.replace(
           oug,
-          `!!filterGroups.${replacement}.find(function(x){return obj.ou.indexOf(x) !== -1})`
+          "ous['"+replacement+"'].find(function(x){return obj.ou.indexOf(x) !== -1})"
         );
         return replacement;
       });
-      allGroups = _.concat(allGroups, gps);
+      denominatorUnits = denominatorUnits.concat(gps);
     }
 
     if (numeratorLevels) {
       const levels = numeratorLevels.map((level) => {
-        const replacement = level.replace("OU_LEVEL{", "").replace("}", "");
+        const replacement = level
+          .replace("OU_LEVEL{", "LEVEL-")
+          .replace("}", "");
         num = num.replace(
           level,
-          `!!filterLevels['${replacement}'].find(function(x){return obj.ou.indexOf(x) !== -1})`
+          "ous['"+replacement+"'].find(function(x){return obj.ou.indexOf(x) !== -1})"
         );
         return replacement;
       });
-      allLevels = _.concat(allLevels, levels);
+      numeratorUnits = numeratorUnits.concat(levels);
     }
 
     if (denominatorLevels) {
       const levels = denominatorLevels.map((level) => {
-        const replacement = level.replace("OU_LEVEL{", "").replace("}", "");
+        const replacement = level
+          .replace("OU_LEVEL{", "LEVEL-")
+          .replace("}", "");
         den = den.replace(
           level,
-          `!!filterLevels['${replacement}'].find(function(x){return obj.ou.indexOf(x) !== -1})`
+          "ous['"+replacement+"'].find(function(x){return obj.ou.indexOf(x) !== -1})"
         );
         return replacement;
       });
-      allLevels = _.concat(allLevels, levels);
+      denominatorUnits = denominatorUnits.concat(levels);
     }
 
-    let filterGroups = {};
-    let filterLevels = {};
+    let ous = {};
+    let units = orgs;
 
-    if (allGroups.length > 0) {
-      const groups = await fetchOrganisationsByGroups(allGroups.join(","));
-      const processedGroups = groups.organisationUnitGroups.map(function (gp) {
-        const units = gp.organisationUnits.map(function (o) {
-          return o.id;
+    let numeratorData = [];
+    let denominatorData = [];
+    const allOrganisations = numeratorUnits.concat(denominatorUnits);
+
+    if (allOrganisations.length > 0) {
+      ous = await fetchOrganisations(orgs, allOrganisations, periods, fetchApi);
+      units = units + ";" + allOrganisations.join(";");
+
+      if(numeratorUnits.length > 0){
+        const nums = {};
+
+        Object.keys(ous).filter(function(sob){
+          return numeratorUnits.some(function(key){
+              return sob === key;
+          });
+        }).forEach(function (key) {
+          nums[key] = ous[key];
         });
-        return [gp.id, units];
-      });
-      filterGroups = _.fromPairs(processedGroups);
+
+        const otherDataNum = Array.from(new Set(Object.values(nums).flat()));
+        numeratorData = dimensions.pe.map(function (pe) {
+          return otherDataNum
+            .map(function (ou) {
+              return { pe: pe, ou: ou };
+            })
+            .flat();
+        }).flat();
+      }
+
+      if(denominatorUnits.length > 0){
+        const dens = {};
+        Object.keys(ous).filter(function(sob){
+          return denominatorUnits.some(function(key){
+              return sob === key;
+          });
+        }).forEach(function (key) {
+          dens[key] = ous[key];
+        });
+        const otherDataDen = Array.from(new Set(Object.values(dens).flat()));
+        denominatorData = dimensions.pe.map(function (pe) {
+          return otherDataDen
+            .map(function (ou) {
+              return { pe: pe, ou: ou };
+            })
+            .flat();
+        }).flat();
+      }
+    } else {
+      units = units + ";LEVEL-" + maxLevel;
     }
 
-    if (allLevels.length > 0) {
-      const { organisationUnits } = await fetchOrganisationsByLevels(
-        allLevels.join(","),
+    if (allDataElements.length > 0) {
+      const response = await fetchAnalyticsData(
+        allDataElements.unique().join(";"),
+        periods,
+        units,
         fetchApi
       );
 
-      filterLevels = _.groupBy(organisationUnits, "level");
+      const analyticsData = response.rows.map(function (r) {
+        const obj = Object.fromEntries([
+          [r[0], parseFloat(r[3])],
+          ["pe", r[1]],
+          ["ou", response.metaData.ouHierarchy[r[2]] + "/" + r[2]],
+        ]);
+        return obj;
+      });
+
+      const results = groupBy(analyticsData, function(item){
+        return [item.pe, item.ou];
+      }).map(function(re){
+        return re.reduce(function(result, current) {
+          return Object.assign(result, current);
+        }, {});
+      })
+
+      if (numeratorDataElements !== null) {
+        numeratorData = results;
+      }
+      if (denominatorDataElements !== null) {
+        denominatorData = results;
+      }
     }
-
-    if (rule.level) {
-      orgs = `${orgs};${rule.level}`;
-    }
-
-    const data = await fetchAnalyticsData(
-      allDataElements.join(";"),
-      periods,
-      orgs,
-      fetchApi
-    );
-
-    const whatToGroup = data.rows.map(function (r) {
-      const obj = _.fromPairs([
-        [r[0].replace(".", ""), parseFloat(r[3])],
-        ["pe", r[1]],
-        ["ou", `${data.metaData.ouHierarchy[r[2]]}/${r[2]}`],
-      ]);
-      return obj;
+    const numerators = numeratorData.filter(function (obj) {
+      return eval(num);
     });
 
-    const grouped = _.groupBy(whatToGroup, function (x) {
-      return `${x.pe}${x.ou}`;
+    const denominators = denominatorData.filter(function (obj) {
+      return eval(den);
     });
 
-    const searches = _.keys(grouped).map(function (x) {
-      const val = grouped[x];
-      const obj = Object.assign.apply(Object, val);
-      const what = _.pick(obj, ["pe", "ou"]);
-      what.numerator = eval(num) ? 1 : 0;
-      what.denominator = eval(den) ? 1 : 0;
-      return what;
-    });
-
-    const pp = dimensions.ou.map(function (o) {
-      return _(
-        searches.filter(function (s) {
-          return s.ou.indexOf(o) !== -1;
-        })
-      )
-        .groupBy("pe")
-        .map((objs, key) => {
-          console.log(objs);
-          const numerator = _.sumBy(objs, "numerator");
-          const denominator = _.sumBy(objs, "denominator");
-          let value = 0;
-
-          if (denominator !== 0) {
-            value = String(Number((numerator * 100) / denominator).toFixed(2));
-          }
-          return {
-            pe: key,
-            value: value,
-          };
-        })
-        .value()
-        .map(function (vv) {
-          return [indicatorId, vv.pe, o, vv.value];
+    const pp = dimensions.ou.map(function (ou) {
+      return dimensions.pe.map(function (pe) {
+        const num = numerators.filter(function (n) {
+          return n.pe === pe && String(n.ou).indexOf(ou) !== -1;
         });
+
+        const den = denominators.filter(function (n) {
+          return n.pe === pe && String(n.ou).indexOf(ou) !== -1;
+        });
+
+        let indicator = 0;
+
+        if(countUnits){
+          const n = Array.from(new Set(num.map(function(p){return p.ou}))).length;
+          const d = Array.from(new Set(den.map(function(p){return p.ou}))).length;
+
+          if(d !== 0){
+            indicator = Number((n*100)/d).toFixed(2);
+          }
+        }
+        return [indicatorId, pe, ou, indicator];
+      });
     });
 
-    // dummy.metaData.items[indicatorId] = {
-    //     name: rule.name
-    // };
-    // dummy.metaData.dimensions.dx = [indicatorId];
-    // dummy.rows = _.flatten(pp);
-    // dummy.height = _.flatten(pp).length;
+    dummy.metaData.items[indicatorId] = {
+      name: rule.name,
+    };
+    dummy.metaData.dimensions.dx = [indicatorId];
+    dummy.rows = pp.flat();
+    dummy.height = pp.flat().length;
     dummy.width = 4;
     dummy.headers = [
       {
@@ -242,12 +317,16 @@ export async function call(periods, orgs, rule, fetchApi) {
         meta: false,
       },
     ];
-    // parameters.success(dummy);
-    console.log(dummy);
+    if (addParams) {
+      parameters.success(dummy);
+    } else {
+      return dummy;
+    }
   } catch (e) {
-    console.log(e);
-    // parameters.error({});
+    if (addParams) {
+      parameters.error({});
+    } else {
+      console.log(e);
+    }
   }
-}
-
-// call(parameters.pe, parameters.ou, parameters.rule);
+}`;

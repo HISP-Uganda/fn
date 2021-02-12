@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "react-query";
+import { useQuery } from "react-query";
 export function useIndicators(d2) {
   const api = d2.Api.getApi();
   return useQuery(
@@ -10,14 +10,52 @@ export function useIndicators(d2) {
   );
 }
 
-export function useIndicator(d2, id) {
-  const api = d2.Api.getApi();
+export function useMeta(d2) {
   return useQuery(
-    ["concept", { id }],
+    ["metadata"],
     async () => {
-      return await api.get(`dataStore/functions/${id}`);
+      const [
+        rootCollection,
+        levelsCollection,
+        groupsCollection,
+      ] = await Promise.all([
+        d2.models.organisationUnits.list({
+          paging: false,
+          level: 1,
+          fields: `id,path,displayShortName~rename(displayName),children::isNotEmpty`,
+        }),
+        d2.models.organisationUnitLevels.list({
+          paging: false,
+        }),
+        d2.models.organisationUnitGroups.list({
+          fields: `id,displayShortName~rename(displayName)`,
+          paging: false,
+        }),
+      ]);
+
+      const levels = levelsCollection.toArray();
+      const groups = groupsCollection.toArray();
+      const root = rootCollection.toArray()[0];
+      return { levels, groups, root };
     },
     { refetchOnWindowFocus: false }
+  );
+}
+
+export async function getIndicator(d2, id) {
+  const api = d2.Api.getApi();
+  return await api.get(`dataStore/functions/${id}`);
+}
+
+export async function useIndicator(d2, id) {
+  return useQuery(
+    ["indicator", { id }],
+    async () => {
+      return await getIndicator(d2, id);
+    },
+    {
+      refetchOnWindowFocus: false,
+    }
   );
 }
 

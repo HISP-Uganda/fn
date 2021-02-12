@@ -27,7 +27,7 @@ const organisationColumns = [
 
 const OULevelTable = ({ handlePadClick }) => {
   const d2 = useD2();
-  const { status, data, isFetching } = useOULevels(d2);
+  const { status, data } = useOULevels(d2);
 
   if (status === "loading") {
     return <div>Loading</div>;
@@ -46,7 +46,7 @@ const OULevelTable = ({ handlePadClick }) => {
       columns={organisationColumns}
       rowKey="id"
       size="default"
-      pagination={{ pageSize: 5 }}
+      pagination={false}
     />
   );
 };

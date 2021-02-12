@@ -1,16 +1,20 @@
 import "antd/dist/antd.css";
 import React from "react";
 import { HashRouter as Router, Route, Switch } from "react-router-dom";
-import IndicatorDetails from "./IndicatorDetails";
 import Indicators from "./Indicators";
+import IndicatorUpdate from "./IndicatorUpdate";
+import NewIndicator from "./NewIndicator";
 
 const App = () => {
   return (
     <Router>
       <div style={{ padding: 10 }}>
         <Switch>
-          <Route path="/indicators/:id">
-            <IndicatorDetails />
+          <Route path="/indicators/:id" exact>
+            <IndicatorUpdate />
+          </Route>
+          <Route path="/new-indicator">
+            <NewIndicator />
           </Route>
           <Route path="/">
             <Indicators />

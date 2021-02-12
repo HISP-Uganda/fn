@@ -49,8 +49,7 @@ const Expression = ({
   const onOk = async () => {
     try {
       await form.validateFields();
-      okDialog(condition, index);
-      // form.resetFields();
+      okDialog(form.getFieldValue("expression"), index);
     } catch (error) {
       console.log(error);
     }
@@ -70,6 +69,7 @@ const Expression = ({
       </div>
       <Modal
         title="Adding Condition"
+        getContainer={false}
         visible={dialogOpen}
         onOk={onOk}
         onCancel={closeDialog}

@@ -8,9 +8,10 @@ const PeriodDialog = ({
   dialogOpened,
   onClose,
   onUpdate,
+  initial,
 }) => {
   const d2 = useD2();
-  const [selectedPeriods, setSelectedPeriods] = useState([]);
+  const [selectedPeriods, setSelectedPeriods] = useState(initial);
   const onOk = () => {
     onUpdate(selectedPeriods);
     togglePeriodDialog();

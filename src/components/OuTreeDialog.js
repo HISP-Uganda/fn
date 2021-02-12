@@ -1,15 +1,21 @@
-import React, { useState } from "react";
 import OrgUnitDialog from "@dhis2/d2-ui-org-unit-dialog";
 import { Button } from "antd";
+import React, { useState } from "react";
 import { useD2 } from "../Context";
-import { useRootTree } from "../Queries";
 
-const OuTreeDialog = ({ toggleDialog, open, onOrgUnitSelect }) => {
+const OuTreeDialog = ({
+  toggleDialog,
+  initial,
+  open,
+  onOrgUnitSelect,
+  levels,
+  groups,
+  root,
+}) => {
   const d2 = useD2();
-  const { status, data, error, isFetching } = useRootTree(d2);
   const [level, setLevel] = useState();
   const [group, setGroup] = useState();
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState(initial);
   const [userOrgUnits, setUserOrgUnits] = useState([]);
 
   const onLevelChange = (event) => {
@@ -67,14 +73,6 @@ const OuTreeDialog = ({ toggleDialog, open, onOrgUnitSelect }) => {
     toggleDialog();
   };
 
-  if (status === "loading") {
-    return <div>Loading</div>;
-  }
-  if (status === "error") {
-    return <div>{error.message}</div>;
-  }
-
-  const { levels, groups, root } = data;
   return (
     <div>
       <div style={{ paddingLeft: 10 }}>
