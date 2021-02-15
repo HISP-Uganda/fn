@@ -1,5 +1,3 @@
-import React from "react";
-
 const IndicatorTable = ({ data }) => {
   if (Object.keys(data).length === 0 && data.constructor === Object) {
     return <div>No data</div>;

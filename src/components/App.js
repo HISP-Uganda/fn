@@ -1,5 +1,4 @@
 import "antd/dist/antd.css";
-import React from "react";
 import { HashRouter as Router, Route, Switch } from "react-router-dom";
 import Indicators from "./Indicators";
 import IndicatorUpdate from "./IndicatorUpdate";

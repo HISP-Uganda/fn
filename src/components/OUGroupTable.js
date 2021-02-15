@@ -1,5 +1,5 @@
-import { Table, Input } from "antd";
-import React, { useState, useEffect } from "react";
+import { Input, Table } from "antd";
+import { useEffect, useState } from "react";
 import { useD2 } from "../Context";
 import { useOUGroups } from "../Queries";
 

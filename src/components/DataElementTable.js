@@ -1,4 +1,3 @@
-import React from "react";
 import { Input, Table } from "antd";
 import { useD2 } from "../Context";
 import { useDataElements } from "../Queries";

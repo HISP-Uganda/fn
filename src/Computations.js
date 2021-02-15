@@ -235,7 +235,7 @@ async function call(periods, orgs, rule, fetchApi, addParams = false) {
         return re.reduce(function(result, current) {
           return Object.assign(result, current);
         }, {});
-      })
+      });
 
       if (numeratorDataElements !== null) {
         numeratorData = results;

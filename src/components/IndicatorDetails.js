@@ -1,9 +1,10 @@
 import { Button, Checkbox, Col, Form, Input, Row } from "antd";
-import React, { useState } from "react";
-import { useMutation } from "react-query";
+import { observer } from "mobx-react";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "react-query";
 import { useHistory } from "react-router-dom";
 import { func } from "../Computations";
-import { useD2 } from "../Context";
+import { useD2, useStore } from "../Context";
 import { indexConcept, useMeta } from "../Queries";
 import Expression from "./Expression";
 import IndicatorTable from "./IndicatorTable";
@@ -12,19 +13,23 @@ import PeriodDialog from "./PeriodDialog";
 
 const { TextArea } = Input;
 
-const IndicatorDetails = ({ indicator }) => {
+const IndicatorDetails = observer(({ indicator, type }) => {
+  const store = useStore();
   const [numDialogOpen, setNumDialogOpen] = useState(false);
   const [denDialogOpen, setDenDialogOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
   const history = useHistory();
   const d2 = useD2();
   const { status, data, error, isFetching } = useMeta(d2);
-  const { mutate } = useMutation(indexConcept(d2));
+  const { mutateAsync } = useMutation(indexConcept(d2), {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries(["indicators"]);
+    },
+  });
   const [form] = Form.useForm();
-  const [selectedPeriods, setSelectedPeriods] = useState([
-    { id: "LAST_12_MONTHS", name: "Last 12 months", idx: 4 },
-  ]);
+  const [selectedPeriods, setSelectedPeriods] = useState([]);
   const [selectedUnits, setSelectedUnits] = useState([]);
   const [processedData, setProcessedData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -112,7 +117,7 @@ const IndicatorDetails = ({ indicator }) => {
   const preview = async () => {
     setLoading(true);
     const call = `call(
-      "${selectedPeriods.map((p) => p.id).join(";")}",
+      "${selectedPeriods[0].items.map((p) => p.id).join(";")}",
       "${selectedUnits.map((p) => p.id).join(";")}",
       {
         id: "${getIndicatorAndDenominator().id}",
@@ -154,7 +159,12 @@ const IndicatorDetails = ({ indicator }) => {
   };
 
   const onFinish = async (values) => {
-    mutate(values);
+    const current = { ...values, function: func };
+    await mutateAsync(current);
+    if (type === "NEW") {
+      store.addIndicator(values.id);
+    }
+    history.push("/");
   };
 
   if (status === "loading") {
@@ -276,6 +286,7 @@ const IndicatorDetails = ({ indicator }) => {
             <Col span={16}>
               <div style={{ display: "flex", marginTop: 30 }}>
                 <PeriodDialog
+                  d2={d2}
                   dialogOpened={periodDialogOpen}
                   onClose={onClose}
                   togglePeriodDialog={togglePeriodDialog}
@@ -323,6 +334,6 @@ const IndicatorDetails = ({ indicator }) => {
       </>
     );
   }
-};
+});
 
 export default IndicatorDetails;

@@ -1,5 +1,4 @@
 import { Table } from "antd";
-import React from "react";
 import { useD2 } from "../Context";
 import { useOULevels } from "../Queries";
 

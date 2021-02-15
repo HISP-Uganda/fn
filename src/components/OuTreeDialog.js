@@ -1,6 +1,6 @@
 import OrgUnitDialog from "@dhis2/d2-ui-org-unit-dialog";
 import { Button } from "antd";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useD2 } from "../Context";
 
 const OuTreeDialog = ({

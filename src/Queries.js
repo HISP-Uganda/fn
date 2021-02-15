@@ -6,7 +6,7 @@ export function useIndicators(d2) {
     async () => {
       return await api.get("dataStore/functions");
     },
-    { retryDelay: 1000, refetchOnWindowFocus: false }
+    { retryDelay: 1000 }
   );
 }
 
@@ -131,6 +131,16 @@ export function useRootTree(d2) {
 }
 
 export const indexConcept = (d2) => async (indicator) => {
-  const namespace = await d2.dataStore.get("functions");
-  return namespace.set(indicator.id, indicator);
+  try {
+    const namespace = await d2.dataStore.get("functions");
+    return namespace.set(indicator.id, indicator);
+  } catch (error) {
+    const namespace = await d2.dataStore.create("functions");
+    namespace.set(indicator.id, indicator);
+  }
+};
+
+export const deleteIndicator = (d2) => async (id) => {
+  const api = d2.Api.getApi();
+  return await api.delete(`dataStore/functions/${id}`);
 };

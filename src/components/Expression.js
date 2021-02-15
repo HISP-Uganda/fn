@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Tabs, Modal, Button, Input, Row, Col, Form } from "antd";
 import DataElementTable from "./DataElementTable";
 import OUGroupTable from "./OUGroupTable";
@@ -92,7 +92,11 @@ const Expression = ({
                 rules={[{ required: true }]}
                 name="expression"
               >
-                <TextArea rows={4} onClick={onConditionClick} />
+                <TextArea
+                  rows={4}
+                  onClick={onConditionClick}
+                  onChange={onConditionClick}
+                />
               </Form.Item>
 
               <Button onClick={() => handlePadClick("&&")}>AND</Button>

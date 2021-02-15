@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { useQueries, useQueryClient } from "react-query";
+import { useEffect, useState } from "react";
+import { useQueries, useMutation } from "react-query";
 import { Popconfirm, Table, Button } from "antd";
-import { useD2 } from "../Context";
-import { getIndicator } from "../Queries";
+import { useD2, useStore } from "../Context";
+import { deleteIndicator, getIndicator } from "../Queries";
 import { Link } from "react-router-dom";
+import { observer } from "mobx-react";
 
-const Indicator = ({ indicators }) => {
+const Indicator = observer(() => {
   const d2 = useD2();
   const [data, setData] = useState([]);
-  const [currentIndicators, setCurrentIndicators] = useState(indicators);
-  const queryClient = useQueryClient();
+  const store = useStore();
+  const { mutateAsync } = useMutation(deleteIndicator(d2));
 
   const columns = [
     {
@@ -31,22 +32,24 @@ const Indicator = ({ indicators }) => {
         return (
           <Popconfirm
             title="Sure to delete?"
-            onConfirm={() => deleteIndicator(id)}
+            onConfirm={() => deleteCurrentIndicator(id)}
           >
-            <Button>Delete</Button>
+            <Button type="text" style={{ color: "red" }}>
+              Delete
+            </Button>
           </Popconfirm>
         );
       },
     },
   ];
 
-  const deleteIndicator = (id) => {
-    setCurrentIndicators(indicators.filter((ind) => ind !== id));
-    // setData(data.filter((d) => d.id !== id));
+  const deleteCurrentIndicator = async (id) => {
+    await mutateAsync(id);
+    store.removeIndicator(id);
   };
 
   const indicatorQueries = useQueries(
-    currentIndicators.map((indicator) => {
+    store.indicators.map((indicator) => {
       return {
         queryKey: ["indicator", indicator],
         queryFn: () => getIndicator(d2, indicator),
@@ -59,6 +62,6 @@ const Indicator = ({ indicators }) => {
   }, [indicatorQueries]);
 
   return <Table dataSource={data} columns={columns} rowKey="id" />;
-};
+});
 
 export default Indicator;

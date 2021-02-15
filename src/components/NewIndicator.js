@@ -1,4 +1,3 @@
-import React from "react";
 import { useD2 } from "../Context";
 import { generateUid } from "../utils";
 import IndicatorDetails from "./IndicatorDetails";
@@ -41,7 +40,7 @@ const NewIndicator = () => {
     function: fn,
   };
 
-  return <IndicatorDetails indicator={template} />;
+  return <IndicatorDetails indicator={template} type="NEW" />;
 };
 
 export default NewIndicator;

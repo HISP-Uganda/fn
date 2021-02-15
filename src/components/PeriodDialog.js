@@ -1,16 +1,16 @@
-import React, { useState } from "react";
-import { Button } from "antd";
-import PeriodSelectorDialog from "@dhis2/d2-ui-period-selector-dialog";
-import { useD2 } from "../Context";
+import { PeriodDimension } from "@dhis2/analytics";
+import { Button, Modal } from "antd";
+import { useState } from "react";
+import * as PropTypes from "prop-types";
 
 const PeriodDialog = ({
+  d2,
   togglePeriodDialog,
   dialogOpened,
   onClose,
   onUpdate,
   initial,
 }) => {
-  const d2 = useD2();
   const [selectedPeriods, setSelectedPeriods] = useState(initial);
   const onOk = () => {
     onUpdate(selectedPeriods);
@@ -20,9 +20,12 @@ const PeriodDialog = ({
     setSelectedPeriods([]);
   };
 
-  const onReorder = () => {};
+  const onSelect = (sss) => {
+    setSelectedPeriods([sss]);
+  };
+
   return (
-    <div>
+    <>
       <div style={{ paddingRight: 10 }}>
         <Button
           size="large"
@@ -33,18 +36,25 @@ const PeriodDialog = ({
           Select period
         </Button>
       </div>
-      <PeriodSelectorDialog
-        d2={d2}
-        open={dialogOpened}
-        onClose={onClose}
-        onUpdate={onOk}
-        selectedItems={selectedPeriods}
-        onReorder={onReorder}
-        onSelect={setSelectedPeriods}
-        onDeselect={onDeselect}
-      />
-    </div>
+      <Modal
+        title="Period Selector"
+        visible={dialogOpened}
+        onOk={onOk}
+        onCancel={onClose}
+        centered
+        width="700px"
+      >
+        <PeriodDimension
+          selectedPeriods={selectedPeriods}
+          onSelect={onSelect}
+        />
+      </Modal>
+    </>
   );
+};
+
+PeriodDialog.propTypes = {
+  d2: PropTypes.object.isRequired,
 };
 
 export default PeriodDialog;

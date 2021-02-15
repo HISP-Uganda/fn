@@ -1,14 +1,22 @@
 import { Button } from "antd";
-import React from "react";
+import { observer } from "mobx-react";
+import { useEffect } from "react";
 import { useHistory } from "react-router-dom";
-import { useD2 } from "../Context";
+import { useD2, useStore } from "../Context";
 import { useIndicators } from "../Queries";
 import Indicator from "./Indicator";
 
-const Indicators = () => {
+const Indicators = observer(() => {
+  const store = useStore();
   const histrory = useHistory();
   const d2 = useD2();
   const { status, data } = useIndicators(d2);
+
+  useEffect(() => {
+    if (data) {
+      store.setIndicators(data);
+    }
+  }, [data]);
 
   const addIndicator = async () => {
     histrory.push(`/new-indicator`);
@@ -21,13 +29,13 @@ const Indicators = () => {
   } else {
     return (
       <>
-        <Indicator indicators={data} />
+        <Indicator/>
         <Button size="large" onClick={() => addIndicator()}>
           Add Indicator
         </Button>
       </>
     );
   }
-};
+});
 
 export default Indicators;

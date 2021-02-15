@@ -1,8 +1,8 @@
 import { D2Shim } from "@dhis2/app-runtime-adapter-d2";
-import React from "react";
 import { QueryClient, QueryClientProvider } from "react-query";
 import App from "./components/App";
-import { D2Context } from "./Context";
+import { D2Context, StoreContext } from "./Context";
+import { Store } from "./Store";
 
 const queryClient = new QueryClient();
 
@@ -23,11 +23,14 @@ const AppWrapper = () => {
         if (!d2) {
           return null;
         }
+        const store = new Store();
         return (
           <QueryClientProvider client={queryClient}>
-            <D2Context.Provider value={d2}>
-              <App />
-            </D2Context.Provider>
+            <StoreContext.Provider value={store}>
+              <D2Context.Provider value={d2}>
+                <App />
+              </D2Context.Provider>
+            </StoreContext.Provider>
           </QueryClientProvider>
         );
       }}

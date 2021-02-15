@@ -1,4 +1,3 @@
-import React from "react";
 import { useQuery } from "react-query";
 import { useParams } from "react-router-dom";
 import { useD2 } from "../Context";
@@ -24,7 +23,7 @@ const IndicatorUpdate = () => {
     return <div>{error.message}</div>;
   }
 
-  return <IndicatorDetails indicator={data} />;
+  return <IndicatorDetails indicator={data} type="EDIT" />;
 };
 
 export default IndicatorUpdate;
